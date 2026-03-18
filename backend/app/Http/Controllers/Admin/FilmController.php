@@ -7,7 +7,7 @@ use App\Models\Film;
 use App\Models\Genre;
 use App\Models\Person;
 use App\Models\FilmCredit;
-use App\Services\S3UploadService;
+use App\Services\FileUploadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -16,7 +16,7 @@ use Illuminate\Validation\Rule;
 class FilmController extends Controller
 {
     public function __construct(
-        private S3UploadService $s3UploadService
+        private FileUploadService $fileUploadService
     ) {}
 
     /**

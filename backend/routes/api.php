@@ -126,7 +126,6 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
 
     // Uploads
     Route::post('/upload/poster', [App\Http\Controllers\Admin\UploadController::class, 'poster']);
-    Route::post('/upload/presigned-url', [App\Http\Controllers\Admin\UploadController::class, 'getPresignedUrl']);
 
     // Genres & People
     Route::apiResource('genres', App\Http\Controllers\Admin\GenreController::class);
