@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Film;
 use App\Models\Rental;
+use App\Models\Setting;
 use App\Models\Transaction;
 use App\Services\MpesaService;
+use App\Services\PaystackService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,8 +16,39 @@ use Illuminate\Support\Facades\Log;
 class PaymentController extends Controller
 {
     public function __construct(
-        private MpesaService $mpesaService
+        private MpesaService $mpesaService,
+        private PaystackService $paystackService
     ) {}
+
+    /**
+     * Get enabled payment gateways and their public config.
+     */
+    public function gateways(): JsonResponse
+    {
+        $gateways = [];
+
+        if (Setting::isGatewayEnabled('mpesa')) {
+            $gateways[] = [
+                'id' => 'mpesa',
+                'name' => 'M-Pesa',
+                'description' => 'Pay with M-Pesa mobile money',
+            ];
+        }
+
+        if (Setting::isGatewayEnabled('paystack')) {
+            $gateways[] = [
+                'id' => 'paystack',
+                'name' => 'Paystack',
+                'description' => 'Pay with card, bank transfer, or mobile money',
+                'public_key' => $this->paystackService->getPublicKey(),
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'gateways' => $gateways,
+        ]);
+    }
 
     /**
      * Initiate M-Pesa STK Push payment.
@@ -31,6 +64,14 @@ class PaymentController extends Controller
             'email' => ['required', 'email'],
             'phone' => ['required', 'string'],
         ]);
+
+        // Check if M-Pesa is enabled
+        if (!Setting::isGatewayEnabled('mpesa')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'M-Pesa payments are currently disabled.',
+            ], 400);
+        }
 
         // Get the film
         $film = Film::published()->findOrFail($validated['film_id']);
@@ -59,6 +100,7 @@ class PaymentController extends Controller
         // Check for pending transaction
         $pendingTransaction = Transaction::where('user_id', $user->id)
             ->where('film_id', $film->id)
+            ->where('gateway', Transaction::GATEWAY_MPESA)
             ->where('status', Transaction::STATUS_PENDING)
             ->where('created_at', '>', now()->subMinutes(2))
             ->first();
@@ -75,6 +117,7 @@ class PaymentController extends Controller
         $transaction = Transaction::create([
             'user_id' => $user->id,
             'film_id' => $film->id,
+            'gateway' => Transaction::GATEWAY_MPESA,
             'phone' => $formattedPhone,
             'amount' => $film->price,
             'status' => Transaction::STATUS_PENDING,
@@ -115,6 +158,214 @@ class PaymentController extends Controller
             'transaction_id' => $transaction->id,
             'checkout_request_id' => $result['checkout_request_id'],
         ]);
+    }
+
+    /**
+     * Initiate Paystack payment.
+     */
+    public function initiatePaystack(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'film_id' => ['required', 'exists:films,id'],
+            'email' => ['required', 'email'],
+        ]);
+
+        // Check if Paystack is enabled
+        if (!Setting::isGatewayEnabled('paystack')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Paystack payments are currently disabled.',
+            ], 400);
+        }
+
+        // Get the film
+        $film = Film::published()->findOrFail($validated['film_id']);
+
+        // Check if user already has active rental
+        if ($user->hasActiveRental($film->id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You already have an active rental for this film.',
+            ], 422);
+        }
+
+        // Check for pending Paystack transaction
+        $pendingTransaction = Transaction::where('user_id', $user->id)
+            ->where('film_id', $film->id)
+            ->where('gateway', Transaction::GATEWAY_PAYSTACK)
+            ->where('status', Transaction::STATUS_PENDING)
+            ->where('created_at', '>', now()->subMinutes(2))
+            ->first();
+
+        if ($pendingTransaction) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You have a pending Paystack payment. Please complete it or wait a few minutes.',
+                'transaction_id' => $pendingTransaction->id,
+            ], 422);
+        }
+
+        // Generate reference
+        $reference = PaystackService::generateReference();
+
+        // Create transaction record
+        $transaction = Transaction::create([
+            'user_id' => $user->id,
+            'film_id' => $film->id,
+            'gateway' => Transaction::GATEWAY_PAYSTACK,
+            'paystack_reference' => $reference,
+            'phone' => $user->phone ?? '',
+            'amount' => $film->price,
+            'status' => Transaction::STATUS_PENDING,
+        ]);
+
+        // Return details for frontend to open Paystack popup via newTransaction()
+        return response()->json([
+            'success' => true,
+            'message' => 'Payment initialized. Complete payment on Paystack.',
+            'transaction_id' => $transaction->id,
+            'reference' => $reference,
+            'public_key' => $this->paystackService->getPublicKey(),
+            'amount' => $film->price * 100, // Paystack expects amount in lowest currency unit (cents)
+            'email' => $validated['email'],
+        ]);
+    }
+
+    /**
+     * Verify Paystack payment (called by frontend after popup closes).
+     */
+    public function verifyPaystack(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'reference' => ['required', 'string'],
+        ]);
+
+        $transaction = Transaction::where('paystack_reference', $validated['reference'])
+            ->where('user_id', $request->user()->id)
+            ->first();
+
+        if (!$transaction) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Transaction not found.',
+            ], 404);
+        }
+
+        // Already processed
+        if ($transaction->status !== Transaction::STATUS_PENDING) {
+            return response()->json([
+                'success' => true,
+                'status' => $transaction->status,
+                'message' => $this->getStatusMessage($transaction),
+                'rental_id' => $transaction->rental_id,
+            ]);
+        }
+
+        // Verify with Paystack
+        $result = $this->paystackService->verifyTransaction($validated['reference']);
+
+        if (!$result['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'],
+            ], 400);
+        }
+
+        if ($result['status'] === 'success') {
+            $this->processPaystackSuccess($transaction, $result);
+        } else {
+            $transaction->update([
+                'status' => Transaction::STATUS_FAILED,
+                'result_desc' => $result['gateway_response'] ?? 'Payment was not completed.',
+                'callback_data' => $result,
+            ]);
+        }
+
+        // Reload transaction
+        $transaction->refresh();
+
+        return response()->json([
+            'success' => true,
+            'status' => $transaction->status,
+            'message' => $this->getStatusMessage($transaction),
+            'rental_id' => $transaction->rental_id,
+        ]);
+    }
+
+    /**
+     * Handle Paystack webhook.
+     */
+    public function paystackWebhook(Request $request): JsonResponse
+    {
+        $payload = $request->getContent();
+        $signature = $request->header('x-paystack-signature', '');
+
+        Log::info('Paystack webhook received', [
+            'ip' => $request->ip(),
+        ]);
+
+        // Validate signature
+        if (!$this->paystackService->validateWebhookSignature($payload, $signature)) {
+            Log::warning('Paystack webhook: invalid signature', [
+                'ip' => $request->ip(),
+            ]);
+
+            return response()->json(['status' => 'invalid signature'], 400);
+        }
+
+        $eventData = $request->all();
+        $parsed = $this->paystackService->parseWebhookEvent($eventData);
+
+        Log::info('Paystack webhook event', [
+            'event' => $parsed['event'],
+            'reference' => $parsed['reference'],
+        ]);
+
+        // Only handle charge.success events
+        if ($parsed['event'] !== 'charge.success') {
+            return response()->json(['status' => 'ok']);
+        }
+
+        if (!$parsed['reference']) {
+            Log::error('Paystack webhook: missing reference');
+            return response()->json(['status' => 'ok']);
+        }
+
+        // Find the transaction
+        $transaction = Transaction::where('paystack_reference', $parsed['reference'])->first();
+
+        if (!$transaction) {
+            Log::error('Paystack webhook: Transaction not found', [
+                'reference' => $parsed['reference'],
+            ]);
+            return response()->json(['status' => 'ok']);
+        }
+
+        // Check if already processed (idempotency)
+        if ($transaction->status !== Transaction::STATUS_PENDING) {
+            Log::info('Paystack webhook: Transaction already processed', [
+                'transaction_id' => $transaction->id,
+                'status' => $transaction->status,
+            ]);
+            return response()->json(['status' => 'ok']);
+        }
+
+        // Verify the transaction with Paystack API for extra security
+        $verification = $this->paystackService->verifyTransaction($parsed['reference']);
+
+        if ($verification['success'] && $verification['status'] === 'success') {
+            $this->processPaystackSuccess($transaction, $verification);
+        } else {
+            $transaction->update([
+                'status' => Transaction::STATUS_FAILED,
+                'result_desc' => $verification['gateway_response'] ?? 'Verification failed.',
+                'callback_data' => $verification,
+            ]);
+        }
+
+        return response()->json(['status' => 'ok']);
     }
 
     /**
@@ -233,6 +484,7 @@ class PaymentController extends Controller
         $response = [
             'success' => true,
             'status' => $transaction->status,
+            'gateway' => $transaction->gateway,
             'message' => $this->getStatusMessage($transaction),
         ];
 
@@ -248,6 +500,36 @@ class PaymentController extends Controller
     }
 
     /**
+     * Process a successful Paystack payment.
+     */
+    private function processPaystackSuccess(Transaction $transaction, array $result): void
+    {
+        DB::transaction(function () use ($transaction, $result) {
+            // Create rental
+            $rental = Rental::create([
+                'user_id' => $transaction->user_id,
+                'film_id' => $transaction->film_id,
+                'amount' => $transaction->amount,
+            ]);
+
+            // Update transaction
+            $transaction->update([
+                'status' => Transaction::STATUS_SUCCESS,
+                'rental_id' => $rental->id,
+                'result_code' => 0,
+                'result_desc' => $result['gateway_response'] ?? 'Payment successful',
+                'callback_data' => $result,
+            ]);
+
+            Log::info('Paystack payment successful', [
+                'transaction_id' => $transaction->id,
+                'rental_id' => $rental->id,
+                'reference' => $transaction->paystack_reference,
+            ]);
+        });
+    }
+
+    /**
      * Get user-friendly status message.
      */
     private function getStatusMessage(Transaction $transaction): string
@@ -255,23 +537,27 @@ class PaymentController extends Controller
         return match ($transaction->status) {
             Transaction::STATUS_PENDING => 'Waiting for payment confirmation...',
             Transaction::STATUS_SUCCESS => 'Payment successful! You can now watch the film.',
-            Transaction::STATUS_FAILED => $this->getFailureMessage($transaction->result_code, $transaction->result_desc),
+            Transaction::STATUS_FAILED => $this->getFailureMessage($transaction),
             Transaction::STATUS_CANCELLED => 'Payment was cancelled.',
             default => 'Unknown status.',
         };
     }
 
     /**
-     * Get user-friendly failure message based on M-Pesa result code.
+     * Get user-friendly failure message.
      */
-    private function getFailureMessage(?int $resultCode, ?string $resultDesc): string
+    private function getFailureMessage(Transaction $transaction): string
     {
-        return match ($resultCode) {
-            1 => 'Insufficient M-Pesa balance.',
-            1032 => 'Payment was cancelled.',
-            1037 => 'Transaction timed out. Please try again.',
-            2001 => 'Wrong M-Pesa PIN entered.',
-            default => $resultDesc ?? 'Payment failed. Please try again.',
-        };
+        if ($transaction->gateway === Transaction::GATEWAY_MPESA) {
+            return match ($transaction->result_code) {
+                1 => 'Insufficient M-Pesa balance.',
+                1032 => 'Payment was cancelled.',
+                1037 => 'Transaction timed out. Please try again.',
+                2001 => 'Wrong M-Pesa PIN entered.',
+                default => $transaction->result_desc ?? 'Payment failed. Please try again.',
+            };
+        }
+
+        return $transaction->result_desc ?? 'Payment failed. Please try again.';
     }
 }

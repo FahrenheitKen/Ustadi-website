@@ -6,8 +6,11 @@ import type {
   FilmsResponse,
   FilmResponse,
   Genre,
+  PaymentGatewayOption,
   PaymentInitiateResponse,
   PaymentStatusResponse,
+  PaystackInitiateResponse,
+  PaystackVerifyResponse,
   Rental,
   RentalAccess,
   Review,
@@ -183,6 +186,11 @@ class ApiClient {
   }
 
   // Payments
+  async getPaymentGateways(): Promise<{ success: boolean; gateways: PaymentGatewayOption[] }> {
+    const { data } = await this.client.get('/payments/gateways');
+    return data;
+  }
+
   async initiatePayment(
     filmId: string,
     firstName: string,
@@ -196,6 +204,24 @@ class ApiClient {
       last_name: lastName,
       email,
       phone,
+    });
+    return data;
+  }
+
+  async initiatePaystackPayment(
+    filmId: string,
+    email: string
+  ): Promise<PaystackInitiateResponse> {
+    const { data } = await this.client.post('/payments/paystack/initiate', {
+      film_id: filmId,
+      email,
+    });
+    return data;
+  }
+
+  async verifyPaystackPayment(reference: string): Promise<PaystackVerifyResponse> {
+    const { data } = await this.client.post('/payments/paystack/verify', {
+      reference,
     });
     return data;
   }
@@ -382,12 +408,18 @@ class ApiClient {
     settings: {
       site_name: string;
       contact_email: string;
+      mpesa_enabled: boolean;
+      paystack_enabled: boolean;
       mpesa_env: 'sandbox' | 'production';
       mpesa_business_short_code: string;
       mpesa_callback_url: string;
       mpesa_consumer_key_set: boolean;
       mpesa_consumer_secret_set: boolean;
       mpesa_passkey_set: boolean;
+      paystack_callback_url: string;
+      paystack_webhook_url: string;
+      paystack_public_key_set: boolean;
+      paystack_secret_key_set: boolean;
     };
   }> {
     const { data } = await this.client.get('/admin/settings');
@@ -397,13 +429,24 @@ class ApiClient {
   async updateAdminSettings(settings: {
     site_name?: string;
     contact_email?: string;
+    mpesa_enabled?: boolean;
+    paystack_enabled?: boolean;
     mpesa_env?: 'sandbox' | 'production';
     mpesa_business_short_code?: string;
     mpesa_consumer_key?: string;
     mpesa_consumer_secret?: string;
     mpesa_passkey?: string;
+    paystack_public_key?: string;
+    paystack_secret_key?: string;
+    paystack_callback_url?: string;
+    paystack_webhook_url?: string;
   }): Promise<{ success: boolean; message: string }> {
     const { data } = await this.client.patch('/admin/settings', settings);
+    return data;
+  }
+
+  async testPaystack(): Promise<{ success: boolean; message: string }> {
+    const { data } = await this.client.post('/admin/settings/test-paystack');
     return data;
   }
 
