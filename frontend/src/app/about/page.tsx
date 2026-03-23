@@ -156,8 +156,8 @@ export default function AboutPage() {
             <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center hover:border-red-500/50 transition-colors">
               <Phone className="h-8 w-8 text-red-500 mx-auto mb-3" />
               <h3 className="font-semibold mb-1">Phone</h3>
-              <a href="tel:+254716549821" className="text-gray-400 hover:text-red-500 transition-colors">
-                +254 716 549 821
+              <a href="tel:+254713554560" className="text-gray-400 hover:text-red-500 transition-colors">
+                +254 713 554 560
               </a>
             </div>
           </div>
