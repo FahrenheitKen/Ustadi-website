@@ -157,7 +157,7 @@ export default function ProfilePage() {
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-white mb-8">Account Settings</h1>
 
-        <div className="grid gap-8 md:grid-cols-2">
+        <div className="grid gap-4 sm:gap-6 md:gap-8 md:grid-cols-2">
           {/* Profile Section */}
           <div className="bg-gray-900/50 rounded-xl p-6 border border-white/10">
             <div className="flex items-center gap-2 mb-6">
@@ -343,7 +343,38 @@ export default function ProfilePage() {
               No rental history yet.
             </p>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* Mobile: Card layout */}
+            <div className="space-y-3 md:hidden">
+              {rentals.map((rental) => (
+                <div key={rental.id} className="p-4 bg-gray-800/50 rounded-lg flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-white font-medium truncate">{rental.film.title}</p>
+                    <p className="text-gray-500 text-xs mt-0.5">
+                      {new Date(rental.created_at).toLocaleDateString()} &middot; {formatPrice(rental.amount)}
+                    </p>
+                  </div>
+                  <span
+                    className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                      rental.status === 'ACTIVE'
+                        ? 'bg-green-900/50 text-green-400'
+                        : rental.status === 'NOT_STARTED'
+                          ? 'bg-blue-900/50 text-blue-400'
+                          : 'bg-gray-700 text-gray-400'
+                    }`}
+                  >
+                    {rental.status === 'NOT_STARTED'
+                      ? 'Not Started'
+                      : rental.status === 'ACTIVE'
+                        ? 'Active'
+                        : 'Expired'}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop: Table layout */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-white/10">
@@ -397,6 +428,7 @@ export default function ProfilePage() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
       </div>

@@ -236,7 +236,7 @@ export default function WatchPage({ params }: PageProps) {
             )}
           </div>
 
-          <div className="w-24" /> {/* Spacer for centering */}
+          <div className="hidden sm:block w-24" /> {/* Spacer for centering */}
         </div>
       </div>
 

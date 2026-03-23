@@ -13,7 +13,7 @@ interface FilmHeroProps {
 
 export function FilmHero({ film }: FilmHeroProps) {
   return (
-    <section className="relative h-[70vh] min-h-[500px] max-h-[800px]">
+    <section className="relative h-[60vh] sm:h-[70vh] min-h-[400px] sm:min-h-[500px] max-h-[800px]">
       {/* Background Image */}
       <div className="absolute inset-0">
         {film.poster_url ? (
@@ -75,15 +75,15 @@ export function FilmHero({ film }: FilmHeroProps) {
           </p>
 
           {/* Price & CTA */}
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
             <Link href={`/films/${film.slug}`}>
-              <Button size="lg" className="bg-red-600 hover:bg-red-700">
+              <Button size="lg" className="w-full sm:w-auto bg-red-600 hover:bg-red-700">
                 <Play className="w-5 h-5 mr-2" />
                 Watch Now - {formatPrice(film.price)}
               </Button>
             </Link>
             <Link href={`/films/${film.slug}`}>
-              <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto border-white/30 text-white hover:bg-white/10">
                 <Info className="w-5 h-5 mr-2" />
                 More Info
               </Button>

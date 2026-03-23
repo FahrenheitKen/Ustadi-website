@@ -220,7 +220,7 @@ export default function LibraryPage() {
                   <Play className="w-5 h-5 text-green-500" />
                   Available to Watch ({activeRentals.length})
                 </h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
                   {activeRentals.map((rental) => (
                     <RentalCard key={rental.id} rental={rental} />
                   ))}
@@ -235,7 +235,7 @@ export default function LibraryPage() {
                   <Clock className="w-5 h-5 text-gray-500" />
                   Previously Rented ({expiredRentals.length})
                 </h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
                   {expiredRentals.map((rental) => (
                     <RentalCard key={rental.id} rental={rental} />
                   ))}

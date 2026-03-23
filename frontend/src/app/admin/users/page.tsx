@@ -96,9 +96,9 @@ export default function AdminUsersPage() {
         </select>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Users List */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 order-2 lg:order-1">
           <div className="bg-gray-900/50 rounded-xl border border-white/10 overflow-hidden">
             {isLoading ? (
               <div className="flex items-center justify-center py-20">
@@ -234,7 +234,7 @@ export default function AdminUsersPage() {
         </div>
 
         {/* User Details Panel */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 order-1 lg:order-2">
           <div className="bg-gray-900/50 rounded-xl border border-white/10 p-6 sticky top-24">
             {selectedUser ? (
               isLoadingUser ? (

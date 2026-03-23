@@ -162,7 +162,7 @@ export default function FilmDetailPage() {
       {/* Hero Section */}
       <section className="relative">
         {/* Background */}
-        <div className="absolute inset-0 h-[50vh] min-h-[400px]">
+        <div className="absolute inset-0 h-[50vh] min-h-[300px] sm:min-h-[400px]">
           {film.poster_url && (
             <Image
               src={film.poster_url}
@@ -180,7 +180,7 @@ export default function FilmDetailPage() {
           <div className="flex flex-col md:flex-row gap-8">
             {/* Poster */}
             <div className="flex-shrink-0">
-              <div className="relative w-[410px] aspect-[2/3] rounded-lg overflow-hidden shadow-2xl mx-auto md:mx-0">
+              <div className="relative w-full max-w-[280px] sm:max-w-[340px] md:w-[340px] lg:w-[410px] aspect-[2/3] rounded-lg overflow-hidden shadow-2xl mx-auto md:mx-0">
                 {film.poster_url ? (
                   <Image
                     src={film.poster_url}
@@ -197,7 +197,7 @@ export default function FilmDetailPage() {
             </div>
 
             {/* Info */}
-            <div className="flex-1 md:pt-24">
+            <div className="flex-1 md:pt-12 lg:pt-24">
               {/* Genres */}
               {film.genres && film.genres.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-4">
@@ -214,7 +214,7 @@ export default function FilmDetailPage() {
               )}
 
               {/* Title */}
-              <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">
                 {film.title}
               </h1>
 
@@ -249,7 +249,7 @@ export default function FilmDetailPage() {
               </div>
 
               {/* Synopsis */}
-              <p className="text-gray-300 text-lg leading-relaxed mb-8 max-w-2xl">
+              <p className="text-gray-300 text-base sm:text-lg leading-relaxed mb-6 sm:mb-8 max-w-2xl">
                 {film.synopsis}
               </p>
 

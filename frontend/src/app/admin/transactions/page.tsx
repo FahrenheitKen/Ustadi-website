@@ -108,7 +108,7 @@ export default function AdminTransactionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Transactions</h1>
           <p className="text-gray-400 mt-1">View and export payment history</p>
@@ -142,14 +142,14 @@ export default function AdminTransactionsPage() {
           <option value="FAILED">Failed</option>
           <option value="CANCELLED">Cancelled</option>
         </select>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
           <Input
             type="date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
             className="bg-gray-800 border-gray-700 text-white"
           />
-          <span className="text-gray-500">to</span>
+          <span className="text-gray-500 hidden sm:inline">to</span>
           <Input
             type="date"
             value={dateTo}
@@ -174,7 +174,34 @@ export default function AdminTransactionsPage() {
             <p className="text-gray-400">No transactions found</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Mobile: Card layout */}
+          <div className="space-y-3 p-4 lg:hidden">
+            {transactions.map((tx) => (
+              <div key={tx.id} className="p-4 bg-gray-800/50 rounded-lg space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-white text-sm font-medium">{tx.film?.title || 'Unknown'}</span>
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(tx.status)}`}
+                  >
+                    {getStatusIcon(tx.status)}
+                    {tx.status}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-400">{tx.user?.name || 'Unknown'}</span>
+                  <span className="text-white font-medium">{formatPrice(tx.amount)}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>{new Date(tx.created_at).toLocaleDateString()}</span>
+                  <span className="font-mono">{tx.mpesa_receipt || tx.phone}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop: Table layout */}
+          <div className="hidden lg:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-white/10">
@@ -265,6 +292,7 @@ export default function AdminTransactionsPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         {/* Pagination */}

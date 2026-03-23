@@ -32,7 +32,7 @@ export function Navbar() {
           {/* Logo */}
           <div className="flex-shrink-0">
             <Link href="/" className="flex items-center">
-              <Image src="/logo.png" alt="Ustadi" width={288} height={72} className="h-[72px] w-auto" priority />
+              <Image src="/logo.png" alt="Ustadi" width={288} height={72} className="h-[48px] sm:h-[60px] md:h-[72px] w-auto" priority />
             </Link>
           </div>
 

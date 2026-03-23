@@ -126,7 +126,63 @@ export default function AdminFilmsPage() {
             </Link>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Mobile: Card layout */}
+          <div className="space-y-3 p-4 md:hidden">
+            {films.map((film) => (
+              <div key={film.id} className="p-4 bg-gray-800/50 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <div className="w-12 h-16 rounded overflow-hidden bg-gray-800 flex-shrink-0">
+                    {film.poster_url ? (
+                      <Image
+                        src={film.poster_url}
+                        alt={film.title}
+                        width={48}
+                        height={64}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <FilmIcon className="w-5 h-5 text-gray-600" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-medium truncate">{film.title}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-gray-400 text-sm">{formatPrice(film.price)}</span>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                          film.is_published
+                            ? 'bg-green-900/50 text-green-400'
+                            : 'bg-gray-700 text-gray-400'
+                        }`}
+                      >
+                        {film.is_published ? 'Published' : 'Draft'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Link
+                      href={`/admin/films/${film.id}/edit`}
+                      className="p-2 text-gray-400 hover:text-white transition-colors"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Link>
+                    <button
+                      onClick={() => setDeleteId(film.id)}
+                      className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop: Table layout */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-white/10">
@@ -222,6 +278,7 @@ export default function AdminFilmsPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         {/* Pagination */}
