@@ -1,74 +1,50 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import { api } from '@/lib/api';
 import { FilmHero } from '@/components/films/FilmHero';
 import { FilmGrid } from '@/components/films/FilmGrid';
-import { Spinner } from '@/components/ui/spinner';
 import type { Film, FilmCard } from '@/types';
 
-export default function HomePage() {
-  const [featuredFilm, setFeaturedFilm] = useState<Film | null>(null);
-  const [newReleases, setNewReleases] = useState<FilmCard[]>([]);
-  const [popularFilms, setPopularFilms] = useState<FilmCard[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export const dynamic = 'force-dynamic';
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        setIsLoading(true);
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
-        const [featuredRes, newReleasesRes, popularRes] = await Promise.all([
-          api.getFeaturedFilm().catch(() => null),
-          api.getNewReleases(12),
-          api.getPopularFilms(12),
-        ]);
-
-        if (featuredRes?.film) {
-          setFeaturedFilm(featuredRes.film);
-        }
-
-        if (newReleasesRes?.films) {
-          setNewReleases(newReleasesRes.films);
-        }
-
-        if (popularRes?.films) {
-          setPopularFilms(popularRes.films);
-        }
-      } catch (err: any) {
-        setError(err.message || 'Failed to load films');
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadData();
-  }, []);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+async function getFeaturedFilm(): Promise<Film | null> {
+  try {
+    const res = await fetch(`${API_URL}/films/featured`, { next: { revalidate: 60 } });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.film || null;
+  } catch {
+    return null;
   }
+}
 
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-500 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="text-white underline"
-          >
-            Try again
-          </button>
-        </div>
-      </div>
-    );
+async function getNewReleases(): Promise<FilmCard[]> {
+  try {
+    const res = await fetch(`${API_URL}/films/new-releases?limit=12`, { next: { revalidate: 60 } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.films || [];
+  } catch {
+    return [];
   }
+}
+
+async function getPopularFilms(): Promise<FilmCard[]> {
+  try {
+    const res = await fetch(`${API_URL}/films/popular?limit=12`, { next: { revalidate: 60 } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.films || [];
+  } catch {
+    return [];
+  }
+}
+
+export default async function HomePage() {
+  const [featuredFilm, newReleases, popularFilms] = await Promise.all([
+    getFeaturedFilm(),
+    getNewReleases(),
+    getPopularFilms(),
+  ]);
 
   return (
     <div className="min-h-screen">

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Film;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class FilmController extends Controller
 {
@@ -77,19 +78,26 @@ class FilmController extends Controller
      */
     public function featured(): JsonResponse
     {
-        $film = Film::featured()
-            ->with(['genres', 'credits.person'])
-            ->first();
-
-        if (!$film) {
-            // Fallback to latest published film
-            $film = Film::published()
+        $data = Cache::remember('films:featured', 300, function () {
+            $film = Film::featured()
                 ->with(['genres', 'credits.person'])
-                ->orderBy('created_at', 'desc')
                 ->first();
-        }
 
-        if (!$film) {
+            if (!$film) {
+                $film = Film::published()
+                    ->with(['genres', 'credits.person'])
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+            }
+
+            if (!$film) {
+                return null;
+            }
+
+            return $this->formatFilmWithDetails($film);
+        });
+
+        if (!$data) {
             return response()->json([
                 'success' => false,
                 'message' => 'No featured film available.',
@@ -98,7 +106,7 @@ class FilmController extends Controller
 
         return response()->json([
             'success' => true,
-            'film' => $this->formatFilmWithDetails($film),
+            'film' => $data,
         ]);
     }
 
@@ -130,15 +138,19 @@ class FilmController extends Controller
      */
     public function newReleases(Request $request): JsonResponse
     {
-        $films = Film::published()
-            ->with(['genres'])
-            ->orderBy('created_at', 'desc')
-            ->limit($request->get('limit', 10))
-            ->get();
+        $limit = $request->get('limit', 10);
+        $films = Cache::remember("films:new_releases:{$limit}", 300, function () use ($limit) {
+            return Film::published()
+                ->with(['genres'])
+                ->orderBy('created_at', 'desc')
+                ->limit($limit)
+                ->get()
+                ->map(fn($film) => $this->formatFilmCard($film));
+        });
 
         return response()->json([
             'success' => true,
-            'films' => $films->map(fn($film) => $this->formatFilmCard($film)),
+            'films' => $films,
         ]);
     }
 
@@ -147,16 +159,20 @@ class FilmController extends Controller
      */
     public function popular(Request $request): JsonResponse
     {
-        $films = Film::published()
-            ->with(['genres'])
-            ->withCount('rentals')
-            ->orderBy('rentals_count', 'desc')
-            ->limit($request->get('limit', 10))
-            ->get();
+        $limit = $request->get('limit', 10);
+        $films = Cache::remember("films:popular:{$limit}", 300, function () use ($limit) {
+            return Film::published()
+                ->with(['genres'])
+                ->withCount('rentals')
+                ->orderBy('rentals_count', 'desc')
+                ->limit($limit)
+                ->get()
+                ->map(fn($film) => $this->formatFilmCard($film));
+        });
 
         return response()->json([
             'success' => true,
-            'films' => $films->map(fn($film) => $this->formatFilmCard($film)),
+            'films' => $films,
         ]);
     }
 

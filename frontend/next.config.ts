@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
         pathname: "/storage/**",
       },
     ],
-    unoptimized: true,
+    unoptimized: false,
   },
 };
 

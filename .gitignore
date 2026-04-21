@@ -1,0 +1,5 @@
+# Claude Code / Claude Flow local tooling
+.claude/
+.claude-flow/
+.mcp.json
+CLAUDE.md
