@@ -77,7 +77,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/videos/signed-url', [VideoController::class, 'getSignedUrl']);
 
     // Payments
+    Route::get('/payments/gateways', [PaymentController::class, 'gateways']);
     Route::post('/payments/initiate', [PaymentController::class, 'initiate']);
+    Route::post('/payments/paystack/initiate', [PaymentController::class, 'initiatePaystack']);
+    Route::post('/payments/paystack/verify', [PaymentController::class, 'verifyPaystack']);
     Route::get('/payments/status/{transaction}', [PaymentController::class, 'status']);
 
     // Reviews (write)
@@ -95,6 +98,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::post('/payments/callback', [PaymentController::class, 'callback'])
     ->middleware('mpesa.whitelist');
+
+/*
+|--------------------------------------------------------------------------
+| Paystack Webhook (No Auth, Signature Verified in Controller)
+|--------------------------------------------------------------------------
+*/
+
+Route::post('/payments/paystack/webhook', [PaymentController::class, 'paystackWebhook']);
 
 /*
 |--------------------------------------------------------------------------
@@ -123,6 +134,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
     Route::get('/settings', [App\Http\Controllers\Admin\SettingController::class, 'index']);
     Route::patch('/settings', [App\Http\Controllers\Admin\SettingController::class, 'update']);
     Route::post('/settings/test-mpesa', [App\Http\Controllers\Admin\SettingController::class, 'testMpesa']);
+    Route::post('/settings/test-paystack', [App\Http\Controllers\Admin\SettingController::class, 'testPaystack']);
 
     // Uploads
     Route::post('/upload/poster', [App\Http\Controllers\Admin\UploadController::class, 'poster']);

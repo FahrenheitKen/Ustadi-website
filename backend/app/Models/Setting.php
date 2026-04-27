@@ -25,6 +25,8 @@ class Setting extends Model
         'mpesa_consumer_key',
         'mpesa_consumer_secret',
         'mpesa_passkey',
+        'paystack_secret_key',
+        'paystack_public_key',
     ];
 
     public static function get(string $key, $default = null): mixed
@@ -80,5 +82,35 @@ class Setting extends Model
             'passkey' => self::get('mpesa_passkey', config('mpesa.passkey')),
             'callback_url' => self::get('mpesa_callback_url', config('mpesa.callback_url')),
         ];
+    }
+
+    public static function getPaystackConfig(): array
+    {
+        return [
+            'secret_key' => self::get('paystack_secret_key', config('paystack.secret_key')),
+            'public_key' => self::get('paystack_public_key', config('paystack.public_key')),
+            'callback_url' => self::get('paystack_callback_url', config('paystack.callback_url')),
+            'webhook_url' => self::get('paystack_webhook_url', config('paystack.webhook_url')),
+        ];
+    }
+
+    public static function isGatewayEnabled(string $gateway): bool
+    {
+        return (bool) self::get("{$gateway}_enabled", false);
+    }
+
+    public static function getEnabledGateways(): array
+    {
+        $gateways = [];
+
+        if (self::isGatewayEnabled('mpesa')) {
+            $gateways[] = 'mpesa';
+        }
+
+        if (self::isGatewayEnabled('paystack')) {
+            $gateways[] = 'paystack';
+        }
+
+        return $gateways;
     }
 }

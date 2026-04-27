@@ -16,12 +16,18 @@ class Transaction extends Model
     const STATUS_FAILED = 'FAILED';
     const STATUS_CANCELLED = 'CANCELLED';
 
+    const GATEWAY_MPESA = 'mpesa';
+    const GATEWAY_PAYSTACK = 'paystack';
+
     protected $fillable = [
         'user_id',
         'film_id',
         'rental_id',
+        'gateway',
         'checkout_request_id',
         'merchant_request_id',
+        'paystack_reference',
+        'paystack_access_code',
         'phone',
         'amount',
         'status',

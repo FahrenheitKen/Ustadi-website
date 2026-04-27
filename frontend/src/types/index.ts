@@ -98,19 +98,30 @@ export interface RentalAccess {
 }
 
 // Transaction Types
+export type PaymentGateway = 'mpesa' | 'paystack';
+
 export interface Transaction {
   id: string;
   user?: User;
   film?: Film;
   rental?: Rental;
+  gateway: PaymentGateway;
   phone: string;
   amount: number;
   status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
   mpesa_receipt: string | null;
   checkout_request_id: string | null;
+  paystack_reference: string | null;
   result_desc: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface PaymentGatewayOption {
+  id: PaymentGateway;
+  name: string;
+  description: string;
+  public_key?: string;
 }
 
 // Review Types
@@ -171,15 +182,33 @@ export interface PaymentInitiateResponse {
   success: boolean;
   message: string;
   transaction_id: string;
-  checkout_request_id: string;
+  checkout_request_id?: string;
+}
+
+export interface PaystackInitiateResponse {
+  success: boolean;
+  message: string;
+  transaction_id: string;
+  reference: string;
+  public_key: string;
+  amount: number; // in lowest currency unit (cents)
+  email: string;
 }
 
 export interface PaymentStatusResponse {
   success: boolean;
   status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
   message: string;
+  gateway?: PaymentGateway;
   rental_id?: string;
   error?: string;
+}
+
+export interface PaystackVerifyResponse {
+  success: boolean;
+  status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
+  message: string;
+  rental_id?: string;
 }
 
 export interface SignedUrlResponse {
@@ -208,10 +237,22 @@ export interface DashboardStats {
 export interface Settings {
   site_name: string;
   contact_email: string;
+
+  // Gateway toggles
+  mpesa_enabled: boolean;
+  paystack_enabled: boolean;
+
+  // M-Pesa
   mpesa_env: 'sandbox' | 'production';
   mpesa_business_short_code: string;
   mpesa_callback_url: string;
   mpesa_consumer_key_set: boolean;
   mpesa_consumer_secret_set: boolean;
   mpesa_passkey_set: boolean;
+
+  // Paystack
+  paystack_callback_url: string;
+  paystack_webhook_url: string;
+  paystack_public_key_set: boolean;
+  paystack_secret_key_set: boolean;
 }
